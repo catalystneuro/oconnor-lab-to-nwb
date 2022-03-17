@@ -16,7 +16,7 @@ def make_trials_times(data):
         duration = td.time[-1] - td.time[0]
         trials_times.append((float(last_time), float(last_time + duration)))
         if len(reference_times) == 0 or len(reference_times) == i - 1:
-            last_time = last_time + duration
+            last_time = last_time + duration + 2.
         else:
             last_time = reference_times[i + 1]
 
@@ -58,5 +58,6 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         )
 
 
-def convert_table_continuous_variable(table_data, trials_times, nwbfile):
+def convert_table_continuous_variable(ts_data, trials_times, nwbfile):
+
     pass

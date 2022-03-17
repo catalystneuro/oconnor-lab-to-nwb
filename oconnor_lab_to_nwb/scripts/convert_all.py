@@ -22,6 +22,7 @@ all_files = [
     # 'MSessionExplorer_KS0132A.mat',
     # 'MSessionExplorer_KS0198B.mat'
 ]
+# ts_types = dict(quantities=)
 metadata_df = pd.read_csv('/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/seversonxu2017_metadata.csv')
 experimenters = ["Kyle S Severson", "Duo Xu"]
 related_publications = ["DOI: 10.1016/j.neuron.2017.03.045"]
@@ -91,7 +92,7 @@ for file_name in all_files:
         elif t == "timeSeries":
             pass
             # convert_table_continuous_variable(
-            #     table_data=d, 
+            #     ts_data=d, 
             #     trials_times=trials_times,
             #     nwbfile=nwbfile
             # )
