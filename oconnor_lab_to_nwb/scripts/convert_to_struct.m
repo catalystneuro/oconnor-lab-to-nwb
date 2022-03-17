@@ -3,6 +3,8 @@ function data_path = convert_to_struct(dir_path, file_name, msessionexplorer_pat
     % file_name = 'MSessionExplorer_KS0125B1.mat';
     % msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer';
 
+    warning('off', 'MATLAB:MKDIR:DirectoryExists');
+
     % Add MSessionExplorer to matlab path
     addpath(genpath(msessionexplorer_path));
 
