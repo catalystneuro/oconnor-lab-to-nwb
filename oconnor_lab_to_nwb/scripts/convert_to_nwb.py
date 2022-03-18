@@ -41,7 +41,7 @@ def convert_table_trials(trials_data, trials_times, nwbfile):
 
 
 def convert_table_spike_times(spiking_data, trials_times, nwbfile):
-    units_names = [k for k in spiking_data[0].__dict__.keys() if k != '_fieldnames']
+    units_names = [k for k in spiking_data[0].__dict__.keys() if k != "_fieldnames"]
     for ui, uid in enumerate(units_names):
         all_spkt = list()
         for i, tr in enumerate(spiking_data):
@@ -58,6 +58,28 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         )
 
 
-def convert_table_continuous_variable(ts_data, trials_times, nwbfile):
+def convert_table_continuous_variable(ts_data, trials_times, nwbfile, time_column="time"):
+    # Create beahavior processing module and timeseries data interface
+    nwbfile.create_processing_module(
+        name="behavior",
+        description="processed behavioral data"
+    )
 
-    pass
+    # Store timeseries data in BehavioralTimeSeries data interface
+    ts_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
+    for tsn in ts_names:
+        bts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
+        nwbfile.processing["behavior"].add(bts)
+        for ti, tr in enumerate(ts_data):
+            rate = 1. / np.diff(getattr(tr, time_column)).mean()
+            bts.create_timeseries(
+                name=f"{tsn}_{ti}", 
+                data=getattr(tr, tsn), 
+                unit="unknown",  # TODO - get correct units for each timeseries
+                # resolution=-1.0, 
+                # conversion=1.0, 
+                starting_time=trials_times[ti][0], 
+                rate=rate, 
+                description="no description", 
+                continuity="continuous"
+            )

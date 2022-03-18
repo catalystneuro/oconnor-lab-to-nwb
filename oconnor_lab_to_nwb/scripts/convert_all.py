@@ -64,7 +64,7 @@ for file_name in all_files:
     # Add subject
     nwbfile.subject = pynwb.file.Subject(
         subject_id=recording_df["mouse_id"].values[0],
-        date_of_birth=datetime.strptime(recording_df["dob"].values[0], "%m/%d/%y"),
+        date_of_birth=datetime.strptime(recording_df["dob"].values[0], "%m/%d/%y").replace(tzinfo=tz.gettz("US/Eastern")),
         description="no description",
         species="Mus musculus",
         sex=recording_df["sex"].values[0],
@@ -90,16 +90,17 @@ for file_name in all_files:
             )            
         # Convert timeseries data
         elif t == "timeSeries":
-            pass
-            # convert_table_continuous_variable(
-            #     ts_data=d, 
-            #     trials_times=trials_times,
-            #     nwbfile=nwbfile
-            # )
-        elif t == "eventValues":
-            pass
+            convert_table_continuous_variable(
+                ts_data=d, 
+                trials_times=trials_times,
+                nwbfile=nwbfile, 
+                time_column="time"
+            )
 
     # Save nwb file
     output_path = f"/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/{recording_id}.nwb"
     with pynwb.NWBHDF5IO(output_path, "w") as io:
         io.write(nwbfile)
+
+    print(f"Data successfully converted: {output_path}")
+    print()
