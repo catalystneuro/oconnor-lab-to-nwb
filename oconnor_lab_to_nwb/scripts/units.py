@@ -25,8 +25,8 @@ tg_units = dict(
     Mi="N*m",
     dFaxial="N/s",
     dFlateral="N/s",
-    dM0="N m/s",
-    dMi="N m/s",
+    dM0="N*m/s",
+    dMi="N*m/s",
 )
 
 

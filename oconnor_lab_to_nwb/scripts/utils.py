@@ -1,7 +1,7 @@
 import pynwb
 import numpy as np
 
-from units import tg_units, crossmodal_units
+from oconnor_lab_to_nwb.scripts.units import tg_units, crossmodal_units
 
 
 def make_trials_times(data):
@@ -48,7 +48,7 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         all_spkt = list()
         for i, tr in enumerate(spiking_data):
             spkt = getattr(tr, uid)
-            if isinstance(spkt, np.ndarray):
+            if isinstance(spkt, np.ndarray) and len(spkt) > 0:
                 spkt += trials_times[i][0]
                 all_spkt.extend(list(spkt))
         nwbfile.add_unit(

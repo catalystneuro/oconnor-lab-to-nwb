@@ -4,9 +4,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from dateutil import tz
+from pathlib import Path
 
 from load_mat_struct import loadmat
-from convert_utils import (
+from utils import (
     make_trials_times,
     convert_table_continuous_variable, 
     convert_table_spike_times, 
@@ -14,14 +15,15 @@ from convert_utils import (
 )
 
 
+dataset = "tg"
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
 dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitData/'
-all_files = [
-    'MSessionExplorer_KS0125B1.mat',
-    'MSessionExplorer_KS0128D.mat',
-    # 'MSessionExplorer_KS0132A.mat',
-    # 'MSessionExplorer_KS0198B.mat'
-]
+
+all_files = list()
+for pp in Path(dir_path).glob("*"):
+    if pp.name.endswith(".mat"):
+        all_files.append(pp.name)
+
 output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/"
 metadata_df = pd.read_csv('/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/seversonxu2017_metadata.csv')
 experimenters = ["Kyle S Severson", "Duo Xu"]
@@ -98,7 +100,7 @@ for file_name in all_files:
             )
 
     # Save nwb file
-    output_file = output_dir + f"{recording_id}.nwb"
+    output_file = output_dir + f"{dataset}_{recording_id}.nwb"
     with pynwb.NWBHDF5IO(output_file, "w") as io:
         io.write(nwbfile)
 
