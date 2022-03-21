@@ -1,6 +1,8 @@
 import pynwb
 import numpy as np
 
+from units import tg_units, crossmodal_units
+
 
 def make_trials_times(data):
     # Make trials (start, stop) times list
@@ -53,8 +55,7 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         nwbfile.add_unit(
             id=ui, 
             spike_times=all_spkt,
-            obs_intervals=trials_times, 
-            # location='Unknown', 
+            obs_intervals=trials_times,
         )
 
 
@@ -70,14 +71,13 @@ def convert_table_continuous_variable(ts_data, trials_times, nwbfile, time_colum
     for tsn in ts_names:
         bts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
         nwbfile.processing["behavior"].add(bts)
+        physical_unit=tg_units.get(tsn, "unknown")
         for ti, tr in enumerate(ts_data):
             rate = 1. / np.diff(getattr(tr, time_column)).mean()
             bts.create_timeseries(
                 name=f"{tsn}_{ti}", 
                 data=getattr(tr, tsn), 
-                unit="unknown",  # TODO - get correct units for each timeseries
-                # resolution=-1.0, 
-                # conversion=1.0, 
+                unit=physical_unit,
                 starting_time=trials_times[ti][0], 
                 rate=rate, 
                 description="no description", 

@@ -6,7 +6,7 @@ from datetime import datetime
 from dateutil import tz
 
 from load_mat_struct import loadmat
-from convert_to_nwb import (
+from convert_utils import (
     make_trials_times,
     convert_table_continuous_variable, 
     convert_table_spike_times, 
@@ -22,7 +22,7 @@ all_files = [
     # 'MSessionExplorer_KS0132A.mat',
     # 'MSessionExplorer_KS0198B.mat'
 ]
-# ts_types = dict(quantities=)
+output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/"
 metadata_df = pd.read_csv('/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/seversonxu2017_metadata.csv')
 experimenters = ["Kyle S Severson", "Duo Xu"]
 related_publications = ["DOI: 10.1016/j.neuron.2017.03.045"]
@@ -47,7 +47,7 @@ for file_name in all_files:
     if len(recording_df) == 0:
         raise Exception(f"Metadata not found for {recording_id}")
 
-    session_start_time = datetime.strptime(recording_df["recording_date"].values[0], "%m/%d/%y").replace(tzinfo=tz.gettz("US/Eastern"))
+    session_start_time = datetime.strptime(recording_df["recording_date"].values[0] + " 12:00:00", "%m/%d/%y %H:%M:%S").replace(tzinfo=tz.gettz("US/Eastern"))
     init_metadata = dict(
         session_description=data["userData"]["sessionName"],
         identifier=data["userData"]["sessionName"],
@@ -98,9 +98,9 @@ for file_name in all_files:
             )
 
     # Save nwb file
-    output_path = f"/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/{recording_id}.nwb"
-    with pynwb.NWBHDF5IO(output_path, "w") as io:
+    output_file = output_dir + f"{recording_id}.nwb"
+    with pynwb.NWBHDF5IO(output_file, "w") as io:
         io.write(nwbfile)
 
-    print(f"Data successfully converted: {output_path}")
+    print(f"Data successfully converted: {output_file}")
     print()
