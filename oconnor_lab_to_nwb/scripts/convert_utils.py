@@ -49,7 +49,6 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         for i, tr in enumerate(spiking_data):
             spkt = getattr(tr, uid)
             if isinstance(spkt, np.ndarray):
-                spkt -= spkt[0]
                 spkt += trials_times[i][0]
                 all_spkt.extend(list(spkt))
         nwbfile.add_unit(
