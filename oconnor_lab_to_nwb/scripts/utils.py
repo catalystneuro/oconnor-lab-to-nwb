@@ -1,8 +1,6 @@
 import pynwb
 import numpy as np
 
-from oconnor_lab_to_nwb.scripts.units import tg_units, crossmodal_units
-
 
 def make_trials_times(data):
     # Make trials (start, stop) times list
@@ -25,7 +23,7 @@ def make_trials_times(data):
     return trials_times
 
 
-def convert_table_trials(trials_data, trials_times, nwbfile):
+def convert_trials(trials_data, trials_times, nwbfile):
     # Add stimulus attributes as trials columns
     stim_attributes_names = [k for k in trials_data[0].__dict__.keys() if k not in ['_fieldnames', 'trialNums', 'bct_trialNum']]
     for at in stim_attributes_names:
@@ -42,7 +40,7 @@ def convert_table_trials(trials_data, trials_times, nwbfile):
 
 
 
-def convert_table_spike_times(spiking_data, trials_times, nwbfile):
+def convert_spike_times(spiking_data, trials_times, nwbfile):
     units_names = [k for k in spiking_data[0].__dict__.keys() if k != "_fieldnames"]
     for ui, uid in enumerate(units_names):
         all_spkt = list()
@@ -58,22 +56,29 @@ def convert_table_spike_times(spiking_data, trials_times, nwbfile):
         )
 
 
-def convert_table_continuous_variable(ts_data, trials_times, nwbfile, time_column="time"):
-    # Create beahavior processing module and timeseries data interface
+def convert_behavior_continuous_variables(
+    ts_data, 
+    trials_times, 
+    nwbfile, 
+    units_map,
+    time_column="time"
+):
+    # Create processing module and timeseries data interface
     nwbfile.create_processing_module(
         name="behavior",
-        description="processed behavioral data"
+        description=f"processed behavioral data"
     )
 
     # Store timeseries data in BehavioralTimeSeries data interface
     ts_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for tsn in ts_names:
-        bts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
-        nwbfile.processing["behavior"].add(bts)
-        physical_unit=tg_units.get(tsn, "unknown")
+        ts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
+        nwbfile.processing["behavior"].add(ts)
+
+        physical_unit=units_map.get(tsn, "unknown")
         for ti, tr in enumerate(ts_data):
             rate = 1. / np.diff(getattr(tr, time_column)).mean()
-            bts.create_timeseries(
+            ts.create_timeseries(
                 name=f"{tsn}_{ti}", 
                 data=getattr(tr, tsn), 
                 unit=physical_unit,
@@ -82,3 +87,72 @@ def convert_table_continuous_variable(ts_data, trials_times, nwbfile, time_colum
                 description="no description", 
                 continuity="continuous"
             )
+
+
+def convert_ecephys(
+    ts_data, 
+    trials_times, 
+    nwbfile, 
+    units_map,
+    extra_data,
+    time_column="time"
+):
+    channel_ids = extra_data["userData"]["sessionInfo"]["channel_map"]["chanMap"]
+    channel_x = extra_data["userData"]["sessionInfo"]["channel_map"]["xcoords"]
+    channel_y = extra_data["userData"]["sessionInfo"]["channel_map"]["ycoords"]
+    sampling_rate = extra_data["userData"]["sessionInfo"]["channel_map"]["fs"]
+    elec_location = extra_data["userData"]["sessionInfo"]["recSite"]
+
+    # Create device and electrode group
+    device = nwbfile.create_device(
+        name='ecephys_device',
+        description='ecephys_device'
+    )
+
+    electrode_group = nwbfile.create_electrode_group(
+        name="electrode_group",
+        description="no description",
+        device=device,
+        location=elec_location
+    )
+
+    # Add electrodes to the electrode table
+    for i, elec_id, x, y in enumerate(zip(channel_ids, channel_x, channel_y)):
+        nwbfile.add_electrode(
+            x=np.nan, 
+            y=np.nan, 
+            z=np.nan, 
+            imp=np.nan,
+            location='unknown',
+            filtering='unknown',
+            group=electrode_group,
+            id=elec_id,
+            rel_x=x, 
+            rel_y=y, 
+        )
+
+    # Create processing module and timeseries data interface
+    nwbfile.create_processing_module(
+        name="ecephys",
+        description=f"processed ecephys data"
+    )
+
+    lfp = pynwb.ecephys.LFP(name="LFP")
+    nwbfile.processing["behavior"].add(lfp)
+
+    channel_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
+    for ti, tr in enumerate(ts_data):
+        for cn in channel_names:
+            getattr(tr, cn)
+        lfp.create_electrical_series(
+            name=f"ElectricalSeries_{ti}", 
+            data=trial_data, 
+            electrodes, 
+            channel_conversion=None, 
+            filtering=None, 
+            resolution=-1.0, 
+            conversion=1.0, 
+            starting_time=None, 
+            rate=sampling_rate, 
+            description='no description', 
+        )
