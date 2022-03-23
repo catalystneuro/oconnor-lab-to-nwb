@@ -11,7 +11,8 @@ from oconnor_lab_to_nwb.scripts.load_mat_struct import loadmat
 from oconnor_lab_to_nwb.scripts.misc_data import (
     tg_units, 
     crossmodal_units,
-    crossmodal_start_times
+    crossmodal_start_times,
+    crossmodal_sex
 )
 from oconnor_lab_to_nwb.scripts.utils import (
     make_trials_times,
@@ -45,9 +46,7 @@ elif dataset_name == "crossmodal":
         if pp.name.endswith(".mat"):
             all_files.append(pp.name)
     output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/CrossModal/converted/"
-    # metadata_df = pd.read_csv('/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/seversonxu2017_metadata.csv')
-    experimenters = [""]
-    related_publications = [""]
+    experimenters = ["Yi-Ting Chang"]
 
 
 eng = matlab.engine.start_matlab()
@@ -99,8 +98,7 @@ for file_name in all_files:
             session_start_time=session_start_time,
             lab="O'Connor lab",
             institution="Johns Hopkins University",
-            # experimenter=experimenters,  # TODO
-            # related_publications=related_publications  # TODO
+            experimenter=experimenters,
         )
 
         subject_metadata = dict(
@@ -108,8 +106,8 @@ for file_name in all_files:
             date_of_birth=datetime.strptime(data["userData"]["sessionInfo"]["DoB"], "%y%m%d").replace(tzinfo=tz.gettz("US/Eastern")),
             description="no description",
             species="Mus musculus",
-            genotype=data["userData"]["sessionInfo"]["Genotype"]
-            # sex=recording_df["sex"].values[0],  # TODO
+            genotype=data["userData"]["sessionInfo"]["Genotype"],
+            sex=crossmodal_sex[file_name.split(".")[0]]
         )
 
     # Create nwbfile with initial metadata

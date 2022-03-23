@@ -45,3 +45,10 @@ crossmodal_start_times = dict(
     YT081_190826_se="26/08/19 17:48:00",
     YT084_200206_se="06/02/20 15:41:00"
 )
+
+crossmodal_sex = dict(
+    EF0150_190224_se="M",
+    YT071_190722_se="M",
+    YT081_190826_se="M",
+    YT084_200206_se="F"
+)
