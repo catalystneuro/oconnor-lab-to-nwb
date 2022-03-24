@@ -19,7 +19,8 @@ from oconnor_lab_to_nwb.scripts.utils import (
     convert_behavior_continuous_variables, 
     convert_ecephys, 
     convert_spike_times, 
-    convert_trials
+    convert_trials,
+    get_trials_recordings_time_offsets
 )
 
 
@@ -117,7 +118,8 @@ for file_name in all_files:
     nwbfile.subject = pynwb.file.Subject(**subject_metadata)
 
     # Convert trials data
-    trials_times = make_trials_times(data=data)
+    trials_recordings_time_offsets = get_trials_recordings_time_offsets(data=data, dataset_name=dataset_name)
+    trials_times = make_trials_times(data=data, trials_recordings_time_offsets=trials_recordings_time_offsets)
     trials_data = data["tableData"][np.where(data["tableType"] == "eventValues")[0][0]]
     convert_trials(
         trials_data=trials_data, 
@@ -125,22 +127,14 @@ for file_name in all_files:
         nwbfile=nwbfile
     )
 
-    for n, t, d in zip(data["tableName"], data["tableType"], data["tableData"]):
-        # Convert spiking data
-        if t == "eventTimes" and n in ["spikeTime", "spikeTimes"] :
-            convert_spike_times(
-                spiking_data=d, 
-                trials_times=trials_times,
-                nwbfile=nwbfile
-            )            
-        # Convert timeseries data
-        elif t == "timeSeries":
+    # Convert timeseries data
+    for n, t, d in zip(data["tableName"], data["tableType"], data["tableData"]): 
+        if t == "timeSeries":
             if n == "LFP":
                 convert_ecephys(
                     ts_data=d, 
                     trials_times=trials_times,
                     nwbfile=nwbfile, 
-                    units_map=units_map,
                     extra_data=data["userData"],
                     time_column="time"
                 )
@@ -152,6 +146,18 @@ for file_name in all_files:
                     units_map=units_map,
                     time_column="time"
                 )
+    
+    # Convert spiking data
+    ind_t = np.where(data["tableType"] == "eventTimes")[0]
+    ind_n = np.where([tn in ["spikeTime", "spikeTimes"] for tn in data["tableName"]])[0]
+    ind_spks = np.intersect1d(ind_t, ind_n)[0]
+    spiking_data = data["tableData"][ind_spks]
+    convert_spike_times(
+        spiking_data=spiking_data, 
+        trials_times=trials_times,
+        trials_recordings_time_offsets=trials_recordings_time_offsets,
+        nwbfile=nwbfile
+    )           
 
     # Save nwb file
     output_file = output_dir + f"{dataset_name}_{recording_id}.nwb"

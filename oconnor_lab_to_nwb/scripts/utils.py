@@ -2,9 +2,20 @@ import pynwb
 import numpy as np
 
 
-def make_trials_times(data):
+def get_trials_recordings_time_offsets(data, dataset_name):
+    table_timeseries = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
+    if dataset_name == "crossmodal":
+        offsets = list()
+        for tr in table_timeseries:
+            offsets.append(abs(tr.time[0]))
+    else:
+        offsets = np.zeros(len(table_timeseries))
+    return np.array(offsets)
+
+
+def make_trials_times(data, trials_recordings_time_offsets):
     # Make trials (start, stop) times list
-    reference_times = data["referenceTime"][0]
+    reference_times = np.array(data["referenceTime"][0]) + trials_recordings_time_offsets
     timeseries_data = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
     if len(reference_times) == 0:
         last_time = 0
@@ -40,14 +51,14 @@ def convert_trials(trials_data, trials_times, nwbfile):
 
 
 
-def convert_spike_times(spiking_data, trials_times, nwbfile):
+def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offsets, nwbfile):
     units_names = [k for k in spiking_data[0].__dict__.keys() if k != "_fieldnames"]
     for ui, uid in enumerate(units_names):
         all_spkt = list()
         for i, tr in enumerate(spiking_data):
             spkt = getattr(tr, uid)
             if isinstance(spkt, np.ndarray) and len(spkt) > 0:
-                spkt += trials_times[i][0]
+                spkt += trials_times[i][0] + trials_recordings_time_offsets[i]
                 all_spkt.extend(list(spkt))
         nwbfile.add_unit(
             id=ui, 
@@ -93,7 +104,6 @@ def convert_ecephys(
     ts_data, 
     trials_times, 
     nwbfile, 
-    units_map,
     extra_data,
     time_column="time"
 ):
@@ -130,6 +140,11 @@ def convert_ecephys(
             rel_x=x, 
             rel_y=y, 
         )
+    
+    elecs_table_region = nwbfile.create_electrode_table_region(
+        region=list(range(i)),
+        description='all electrodes'
+    )
 
     # Create processing module and timeseries data interface
     nwbfile.create_processing_module(
@@ -142,17 +157,15 @@ def convert_ecephys(
 
     channel_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for ti, tr in enumerate(ts_data):
+        all_data_trial = list()
         for cn in channel_names:
-            getattr(tr, cn)
+            all_data_trial.append(getattr(tr, cn))
         lfp.create_electrical_series(
             name=f"ElectricalSeries_{ti}", 
-            data=trial_data, 
-            electrodes, 
-            channel_conversion=None, 
-            filtering=None, 
-            resolution=-1.0, 
-            conversion=1.0, 
-            starting_time=None, 
+            data=np.array(all_data_trial).T, 
+            electrodes=elecs_table_region, 
+            conversion=1e-6,  # CrossModal dataset lfp is in microvolt 
+            starting_time=trials_times[ti][0],
             rate=sampling_rate, 
             description='no description', 
         )
