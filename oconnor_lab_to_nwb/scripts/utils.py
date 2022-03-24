@@ -26,8 +26,10 @@ def make_trials_times(data, trials_recordings_time_offsets):
     for i, td in enumerate(timeseries_data):
         duration = td.time[-1] - td.time[0]
         trials_times.append((float(last_time), float(last_time + duration)))
-        if len(reference_times) == 0 or len(reference_times) == i - 1:
+        if len(reference_times) == 0:
             last_time = last_time + duration + 2.
+        elif len(reference_times) == i + 1:
+            pass
         else:
             last_time = reference_times[i + 1]
 
@@ -107,11 +109,11 @@ def convert_ecephys(
     extra_data,
     time_column="time"
 ):
-    channel_ids = extra_data["userData"]["sessionInfo"]["channel_map"]["chanMap"]
-    channel_x = extra_data["userData"]["sessionInfo"]["channel_map"]["xcoords"]
-    channel_y = extra_data["userData"]["sessionInfo"]["channel_map"]["ycoords"]
-    sampling_rate = extra_data["userData"]["sessionInfo"]["channel_map"]["fs"]
-    elec_location = extra_data["userData"]["sessionInfo"]["recSite"]
+    channel_ids = extra_data["sessionInfo"]["channel_map"]["chanMap"]
+    channel_x = extra_data["sessionInfo"]["channel_map"]["xcoords"]
+    channel_y = extra_data["sessionInfo"]["channel_map"]["ycoords"]
+    sampling_rate = extra_data["sessionInfo"]["channel_map"]["fs"]
+    elec_location = extra_data["sessionInfo"]["recSite"]
 
     # Create device and electrode group
     device = nwbfile.create_device(
@@ -127,7 +129,7 @@ def convert_ecephys(
     )
 
     # Add electrodes to the electrode table
-    for i, elec_id, x, y in enumerate(zip(channel_ids, channel_x, channel_y)):
+    for i, (elec_id, x, y) in enumerate(zip(channel_ids, channel_x, channel_y)):
         nwbfile.add_electrode(
             x=np.nan, 
             y=np.nan, 
@@ -136,9 +138,9 @@ def convert_ecephys(
             location='unknown',
             filtering='unknown',
             group=electrode_group,
-            id=elec_id,
-            rel_x=x, 
-            rel_y=y, 
+            id=int(elec_id),
+            rel_x=float(x), 
+            rel_y=float(y), 
         )
     
     elecs_table_region = nwbfile.create_electrode_table_region(
@@ -166,6 +168,6 @@ def convert_ecephys(
             electrodes=elecs_table_region, 
             conversion=1e-6,  # CrossModal dataset lfp is in microvolt 
             starting_time=trials_times[ti][0],
-            rate=sampling_rate, 
+            rate=float(sampling_rate), 
             description='no description', 
         )
