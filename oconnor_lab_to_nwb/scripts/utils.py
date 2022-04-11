@@ -116,7 +116,7 @@ def convert_ecephys(
     channel_ids = extra_data["sessionInfo"]["channel_map"]["chanMap"]
     channel_x = extra_data["sessionInfo"]["channel_map"]["xcoords"]
     channel_y = extra_data["sessionInfo"]["channel_map"]["ycoords"]
-    sampling_rate = extra_data["sessionInfo"]["channel_map"]["fs"]
+    # sampling_rate = extra_data["sessionInfo"]["channel_map"]["fs"]
     elec_location = extra_data["sessionInfo"]["recSite"]
 
     # Create device and electrode group
@@ -163,6 +163,7 @@ def convert_ecephys(
 
     channel_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for ti, tr in enumerate(ts_data):
+        sampling_rate = 1. / np.diff(getattr(tr, time_column)).mean()
         all_data_trial = list()
         for cn in channel_names:
             all_data_trial.append(getattr(tr, cn))

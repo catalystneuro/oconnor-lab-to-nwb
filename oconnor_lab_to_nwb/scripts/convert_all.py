@@ -24,7 +24,7 @@ from oconnor_lab_to_nwb.scripts.utils import (
 
 eng = matlab.engine.start_matlab()
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
-dataset_name = "tg"  # tg, crossmodal
+dataset_name = "crossmodal"  # tg, crossmodal, seqlick
 
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
