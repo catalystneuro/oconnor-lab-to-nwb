@@ -13,11 +13,15 @@ def get_trials_recordings_time_offsets(data, dataset_name):
     return np.array(offsets)
 
 
-def make_trials_times(data, trials_recordings_time_offsets):
+def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
     # Make trials (start, stop) times list
-    reference_times = np.array(data["referenceTime"][0]) + trials_recordings_time_offsets
+    if dataset_name == "tg":
+        reference_times = data["referenceTime"][0]
+    else:
+        reference_times = np.array(data["referenceTime"][0]) + trials_recordings_time_offsets
     timeseries_data = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
-    if len(reference_times) == 0:
+    
+    if dataset_name == "tg":
         last_time = 0
     else:
         last_time = reference_times[0]
@@ -26,7 +30,7 @@ def make_trials_times(data, trials_recordings_time_offsets):
     for i, td in enumerate(timeseries_data):
         duration = td.time[-1] - td.time[0]
         trials_times.append((float(last_time), float(last_time + duration)))
-        if len(reference_times) == 0:
+        if dataset_name == "tg":
             last_time = last_time + duration + 2.
         elif len(reference_times) == i + 1:
             pass
@@ -155,7 +159,7 @@ def convert_ecephys(
     )
 
     lfp = pynwb.ecephys.LFP(name="LFP")
-    nwbfile.processing["behavior"].add(lfp)
+    nwbfile.processing["ecephys"].add(lfp)
 
     channel_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for ti, tr in enumerate(ts_data):
