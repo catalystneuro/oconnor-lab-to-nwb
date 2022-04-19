@@ -23,7 +23,7 @@ def loadmat(filename):
 
     def _has_struct(elem):
         """Determine if elem is an array and if any array item is a struct"""
-        return isinstance(elem, np.ndarray) and any(isinstance(
+        return isinstance(elem, np.ndarray) and len(elem.shape) > 0 and any(isinstance(
                     e, scipy.io.matlab.mat_struct) for e in elem)
 
     def _todict(matobj):

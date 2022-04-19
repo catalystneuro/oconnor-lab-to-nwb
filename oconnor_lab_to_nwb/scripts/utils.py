@@ -1,5 +1,19 @@
 import pynwb
+import math
 import numpy as np
+from pathlib import Path
+
+
+def get_all_mat_files(path_base, exclude_dirs=["Supporting files"]):
+    all_files = list()
+    for p in Path(path_base).iterdir():
+        # If it is subdir
+        if p.is_dir() and p.name not in exclude_dirs:
+            all_files.extend(get_all_mat_files(path_base=p))
+        # If it is .mat file
+        if p.is_file() and p.suffix == ".mat":
+            all_files.append(str(p.resolve()))
+    return all_files
 
 
 def get_trials_recordings_time_offsets(data, dataset_name):
@@ -7,7 +21,7 @@ def get_trials_recordings_time_offsets(data, dataset_name):
     if dataset_name == "crossmodal":
         offsets = list()
         for tr in table_timeseries:
-            offsets.append(abs(tr.time[0]))
+            offsets.append(tr.time[0])
     else:
         offsets = np.zeros(len(table_timeseries))
     return np.array(offsets)
@@ -42,12 +56,22 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
 
 def convert_trials(trials_data, trials_times, nwbfile):
     # Add stimulus attributes as trials columns
-    stim_attributes_names = [k for k in trials_data[0].__dict__.keys() if k not in ['_fieldnames', 'trialNums', 'bct_trialNum']]
+    exclude_attributes = ['_fieldnames', 'trialNums', 'trialNum', 'bct_trialNum']
+    stim_attributes_names = [k for k in trials_data[0].__dict__.keys() if k not in exclude_attributes]
     for at in stim_attributes_names:
         nwbfile.add_trial_column(name=at, description='no description')
 
     for i, tr in enumerate(trials_data):
-        extra_params = {a:getattr(tr, a) for a in stim_attributes_names}
+        extra_params = dict()
+        for a in stim_attributes_names:
+            val = getattr(tr, a)
+            if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
+                extra_params[a] = str(a)
+            elif math.isnan(val):
+                extra_params[a] = np.nan
+            else:
+                extra_params[a] = float(val)
+
         tr_dict = dict(
             start_time=trials_times[i][0], 
             stop_time=trials_times[i][1],
@@ -64,7 +88,7 @@ def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offse
         for i, tr in enumerate(spiking_data):
             spkt = getattr(tr, uid)
             if isinstance(spkt, np.ndarray) and len(spkt) > 0:
-                spkt += trials_times[i][0] + trials_recordings_time_offsets[i]
+                spkt += trials_times[i][0] - trials_recordings_time_offsets[i]
                 all_spkt.extend(list(spkt))
         nwbfile.add_unit(
             id=ui, 
@@ -81,10 +105,11 @@ def convert_behavior_continuous_variables(
     time_column="time"
 ):
     # Create processing module and timeseries data interface
-    nwbfile.create_processing_module(
-        name="behavior",
-        description=f"processed behavioral data"
-    )
+    if "behavior" not in nwbfile.processing:
+        nwbfile.create_processing_module(
+            name="behavior",
+            description=f"processed behavioral data"
+        )
 
     # Store timeseries data in BehavioralTimeSeries data interface
     ts_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
@@ -111,13 +136,14 @@ def convert_ecephys(
     trials_times, 
     nwbfile, 
     extra_data,
+    dataset_name,
     time_column="time"
 ):
-    channel_ids = extra_data["sessionInfo"]["channel_map"]["chanMap"]
-    channel_x = extra_data["sessionInfo"]["channel_map"]["xcoords"]
-    channel_y = extra_data["sessionInfo"]["channel_map"]["ycoords"]
-    # sampling_rate = extra_data["sessionInfo"]["channel_map"]["fs"]
-    elec_location = extra_data["sessionInfo"]["recSite"]
+    if dataset_name == "crossmodal":
+        channel_ids = extra_data["sessionInfo"]["channel_map"]["chanMap"]
+        channel_x = extra_data["sessionInfo"]["channel_map"]["xcoords"]
+        channel_y = extra_data["sessionInfo"]["channel_map"]["ycoords"]
+        elec_location = extra_data["sessionInfo"]["recSite"]
 
     # Create device and electrode group
     device = nwbfile.create_device(
@@ -146,11 +172,6 @@ def convert_ecephys(
             rel_x=float(x), 
             rel_y=float(y), 
         )
-    
-    elecs_table_region = nwbfile.create_electrode_table_region(
-        region=list(range(i)),
-        description='all electrodes'
-    )
 
     # Create processing module and timeseries data interface
     nwbfile.create_processing_module(
@@ -161,17 +182,27 @@ def convert_ecephys(
     lfp = pynwb.ecephys.LFP(name="LFP")
     nwbfile.processing["ecephys"].add(lfp)
 
+    # Loop through trials to create electrical series
     channel_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for ti, tr in enumerate(ts_data):
         sampling_rate = 1. / np.diff(getattr(tr, time_column)).mean()
+
         all_data_trial = list()
-        for cn in channel_names:
-            all_data_trial.append(getattr(tr, cn))
+        elecs_region = list()
+        for ci in channel_ids:
+            all_data_trial.append(getattr(tr, f"channel_{ci}"))
+            elecs_region.append(np.where(ci == nwbfile.electrodes.id[:])[0][0])
+
+        elecs_table_region = nwbfile.create_electrode_table_region(
+            region=elecs_region,
+            description='all electrodes'
+        )
+        
         lfp.create_electrical_series(
             name=f"ElectricalSeries_{ti}", 
             data=np.array(all_data_trial).T, 
             electrodes=elecs_table_region, 
-            conversion=1e-6,  # CrossModal dataset lfp is in microvolt 
+            conversion=1e-6,  # in CrossModal LFP is in microvolt 
             starting_time=trials_times[ti][0],
             rate=float(sampling_rate), 
             description='no description', 

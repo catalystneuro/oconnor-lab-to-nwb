@@ -38,3 +38,32 @@ crossmodal_units = dict(
     opto1="volt",
     opto2="volt"
 )
+
+seqlick_units = dict(
+    cue="ms",
+    posIndex="Null",
+    water="ms",
+    opto="Null",
+    noLickITI="ms",
+    is_tongue_out="Null",
+    prob_tongue_out="%",
+    tongue_bottom_lm="pixels"
+)
+
+seqlick_dirs = [
+    "Data behav air",
+    "Data behav earplug",
+    "Data behav numbing",
+    "Data ephys ALM",
+    "Data ephys M1B",
+    "Data ephys M1TJ",
+    "Data ephys others",
+    "Data ephys S1BF",
+    "Data ephys S1L",
+    "Data ephys S1TJ",
+    "Data ephys ZZ",
+    "Data learning",
+    "Data opto VGAT-CRE Ai32 2s 2.5V",
+    "Data opto VGAT-CRE Ai32 2s 5V",
+    "Data opto VGAT-CRE Ai32 efficiency"
+]
