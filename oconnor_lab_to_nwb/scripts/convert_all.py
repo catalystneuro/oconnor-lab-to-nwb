@@ -1,4 +1,7 @@
 import pynwb
+from nwbinspector import inspect_nwb
+from nwbinspector.inspector_tools import format_messages
+
 import matlab.engine
 import pandas as pd
 import numpy as np
@@ -26,7 +29,7 @@ from oconnor_lab_to_nwb.scripts.utils import (
 
 eng = matlab.engine.start_matlab()
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
-dataset_name = "seqlick"  # tg, crossmodal, seqlick
+dataset_name = "crossmodal"  # tg, crossmodal, seqlick
 
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
@@ -219,6 +222,7 @@ for file_name in all_files:
             spiking_data=spiking_data, 
             trials_times=trials_times,
             trials_recordings_time_offsets=trials_recordings_time_offsets,
+            dataset_name=dataset_name,
             nwbfile=nwbfile
         )           
 
@@ -228,4 +232,17 @@ for file_name in all_files:
         io.write(nwbfile)
 
     print(f"Data successfully converted: {output_file}")
-    print()
+
+    # Inspect converted data
+    inspection_generator = inspect_nwb(
+        nwbfile_path=output_file, 
+        importance_threshold="BEST_PRACTICE_VIOLATION"
+    )
+    inspection_messages = list(inspection_generator)
+    if len(inspection_messages) == 0:
+        print(f"No violations found for: {output_file}")
+        print()
+    else:
+        print("\n".join(format_messages(inspection_messages, levels=["importance", "file_path"])))
+        print("##################################################################################")
+        print()

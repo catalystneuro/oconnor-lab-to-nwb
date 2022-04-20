@@ -67,6 +67,8 @@ def convert_trials(trials_data, trials_times, nwbfile):
             val = getattr(tr, a)
             if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
                 extra_params[a] = str(a)
+            elif isinstance(val, str):
+                extra_params[a] = val
             elif math.isnan(val):
                 extra_params[a] = np.nan
             else:
@@ -81,7 +83,12 @@ def convert_trials(trials_data, trials_times, nwbfile):
 
 
 
-def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offsets, nwbfile):
+def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offsets, dataset_name, nwbfile):
+    if dataset_name == "crossmodal":
+        obs_intervals=[[start - 0.001, stop + 0.001] for start, stop in trials_times]
+    else:
+        obs_intervals = trials_times
+
     units_names = [k for k in spiking_data[0].__dict__.keys() if k != "_fieldnames"]
     for ui, uid in enumerate(units_names):
         all_spkt = list()
@@ -93,7 +100,7 @@ def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offse
         nwbfile.add_unit(
             id=ui, 
             spike_times=all_spkt,
-            obs_intervals=trials_times,
+            obs_intervals=obs_intervals,
         )
 
 
