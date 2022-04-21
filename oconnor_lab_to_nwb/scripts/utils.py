@@ -17,14 +17,19 @@ def get_all_mat_files(path_base, exclude_dirs=["Supporting files"]):
 
 
 def get_trials_recordings_time_offsets(data, dataset_name, base_time_offset=0):
-    table_timeseries = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
-    if dataset_name == "crossmodal":
-        offsets = list()
-        for tr in table_timeseries:
-            offsets.append(tr.time[0])
+
+    if len(np.where(data["tableType"] == "timeSeries")[0]) > 0:
+        table_timeseries = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
+        if dataset_name == "crossmodal":
+            offsets = list()
+            for tr in table_timeseries:
+                offsets.append(tr.time[0])
+        else:
+            offsets = np.zeros(len(table_timeseries)) - base_time_offset
+        return np.array(offsets)
     else:
-        offsets = np.zeros(len(table_timeseries)) - base_time_offset
-    return np.array(offsets)
+        n_trials = max([len(ref_array) for ref_array in data["referenceTime"]])
+        return np.zeros(n_trials) - base_time_offset
 
 
 def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
@@ -35,9 +40,17 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
         reference_times = np.array(data["referenceTime"][0]) + trials_recordings_time_offsets
 
     trial_duration_increase = 0.
-    if dataset_name == "seqlick" and len(np.where(data["tableName"] == "LFP")[0]) > 0:
-        timeseries_data = data["tableData"][np.where(data["tableName"] == "LFP")[0][0]]
-        trial_duration_increase = 0.01  # some spikes occurred in brief periods inter-intervals
+    if dataset_name == "seqlick":
+        if len(np.where(data["tableName"] == "LFP")[0]) > 0:
+            timeseries_data = data["tableData"][np.where(data["tableName"] == "LFP")[0][0]]
+            trial_duration_increase = 0.01  # some spikes occurred in brief periods inter-intervals
+        else:  # no timeseries, creeate trials times from referenceTime array
+            for rtms in data["referenceTime"]:
+                if len(rtms) > 0:
+                    avg_dur = np.mean(np.diff(rtms))
+                    expanded_rtms = np.append(rtms, rtms[-1] + avg_dur) - rtms[0]
+                    trials_times = [(float(expanded_rtms[i]), float(expanded_rtms[i + 1])) for i in range(len(rtms))]
+                    return trials_times
     else:
         timeseries_data = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
     

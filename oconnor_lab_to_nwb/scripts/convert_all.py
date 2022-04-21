@@ -64,7 +64,7 @@ else:
         if pp.name.endswith(".mat"):
             all_files.append(pp.name)
 
-for fi, file_name in enumerate(all_files):
+for fi, file_name in enumerate(all_files[106:]):
     if dataset_name == "tg":
         data_path = eng.convert_to_struct(dir_path, file_name, False, dataset_name, msessionexplorer_path)
         print(f"{file_name} data extracted to {data_path}")

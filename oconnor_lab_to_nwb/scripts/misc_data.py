@@ -62,7 +62,7 @@ seqlick_dirs = [
     "Data ephys S1L",
     "Data ephys S1TJ",
     "Data ephys ZZ",
-    "Data learning",
+    # "Data learning",
     "Data opto VGAT-CRE Ai32 2s 2.5V",
     "Data opto VGAT-CRE Ai32 2s 5V",
     "Data opto VGAT-CRE Ai32 efficiency"
