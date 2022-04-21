@@ -29,7 +29,7 @@ from oconnor_lab_to_nwb.scripts.utils import (
 
 eng = matlab.engine.start_matlab()
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
-dataset_name = "crossmodal"  # tg, crossmodal, seqlick
+dataset_name = "seqlick"  # tg, crossmodal, seqlick
 
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
@@ -64,19 +64,22 @@ else:
         if pp.name.endswith(".mat"):
             all_files.append(pp.name)
 
-for file_name in all_files:
+for fi, file_name in enumerate(all_files):
     if dataset_name == "tg":
         data_path = eng.convert_to_struct(dir_path, file_name, False, dataset_name, msessionexplorer_path)
         print(f"{file_name} data extracted to {data_path}")
         data = loadmat(data_path)["data"]
+        base_time_offset = 0
     elif dataset_name == "seqlick":
         data_path = eng.convert_to_struct(dir_path, file_name, True, dataset_name, msessionexplorer_path)
-        print(f"{file_name} data extracted to {data_path}")
+        print(f"{fi}  -  {file_name} data extracted to {data_path}")
         data = loadmat(data_path)["data"]
         session_start_datetime_str = loadmat(data_path)["session_start_time"]
+        base_time_offset = loadmat(data_path)["base_time_offset"]
     else:
         data_path = dir_path + file_name
         data = loadmat(data_path)["struct_version"]
+        base_time_offset = 0
 
     # First checks of content
     for n in ['tableName', 'tableType', 'tableData', 'referenceTime', 'epochInd', 'userData']:
@@ -166,7 +169,6 @@ for file_name in all_files:
             genotype=recording_df["genotype"].values[0],
         )
 
-
     # Create nwbfile with initial metadata
     nwbfile = nwbfile = pynwb.NWBFile(**init_metadata)
 
@@ -176,7 +178,8 @@ for file_name in all_files:
     # Convert trials data
     trials_recordings_time_offsets = get_trials_recordings_time_offsets(
         data=data, 
-        dataset_name=dataset_name
+        dataset_name=dataset_name,
+        base_time_offset=base_time_offset
     )
     trials_times = make_trials_times(
         data=data, 

@@ -9,6 +9,7 @@ function data_path = convert_to_struct(dir_path, file_name, file_full_path, data
     addpath(genpath(msessionexplorer_path));
 
     % Load data with MSessionExplorer
+    base_time_offset = 0;
     if file_full_path
         load([file_name]);
     else
@@ -22,7 +23,7 @@ function data_path = convert_to_struct(dir_path, file_name, file_full_path, data
     if strcmp(dataset_name, 'seqlick')
         % Convert session start time from datetime format to string format
         session_start_time = datestr(se.userData.sessionInfo.sessionDatetime, 'yyyy-mm-dd HH:MM:SS');
-        save([dir_path, 'tmp/data_struct.mat'], 'data', 'session_start_time');
+        save([dir_path, 'tmp/data_struct.mat'], 'data', 'session_start_time', 'base_time_offset');
     else
         save([dir_path, 'tmp/data_struct.mat'], 'data');
     end

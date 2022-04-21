@@ -11,19 +11,19 @@ def get_all_mat_files(path_base, exclude_dirs=["Supporting files"]):
         if p.is_dir() and p.name not in exclude_dirs:
             all_files.extend(get_all_mat_files(path_base=p))
         # If it is .mat file
-        if p.is_file() and p.suffix == ".mat":
+        if p.is_file() and p.suffix == ".mat" and "seArray.mat" not in p.name:
             all_files.append(str(p.resolve()))
     return all_files
 
 
-def get_trials_recordings_time_offsets(data, dataset_name):
+def get_trials_recordings_time_offsets(data, dataset_name, base_time_offset=0):
     table_timeseries = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
     if dataset_name == "crossmodal":
         offsets = list()
         for tr in table_timeseries:
             offsets.append(tr.time[0])
     else:
-        offsets = np.zeros(len(table_timeseries))
+        offsets = np.zeros(len(table_timeseries)) - base_time_offset
     return np.array(offsets)
 
 
@@ -33,7 +33,13 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
         reference_times = data["referenceTime"][0]
     else:
         reference_times = np.array(data["referenceTime"][0]) + trials_recordings_time_offsets
-    timeseries_data = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
+
+    trial_duration_increase = 0.
+    if dataset_name == "seqlick" and len(np.where(data["tableName"] == "LFP")[0]) > 0:
+        timeseries_data = data["tableData"][np.where(data["tableName"] == "LFP")[0][0]]
+        trial_duration_increase = 0.01  # some spikes occurred in brief periods inter-intervals
+    else:
+        timeseries_data = data["tableData"][np.where(data["tableType"] == "timeSeries")[0][0]]
     
     if dataset_name == "tg":
         last_time = 0
@@ -42,7 +48,7 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
 
     trials_times = list()
     for i, td in enumerate(timeseries_data):
-        duration = td.time[-1] - td.time[0]
+        duration = td.time[-1] - td.time[0] + trial_duration_increase
         trials_times.append((float(last_time), float(last_time + duration)))
         if dataset_name == "tg":
             last_time = last_time + duration + 2.
