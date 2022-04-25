@@ -73,25 +73,49 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
     return trials_times
 
 
-def convert_trials(trials_data, trials_times, nwbfile):
+def convert_trials(trials_data, events_data, trials_times, trials_recordings_time_offsets, nwbfile):
     # Add stimulus attributes as trials columns
     exclude_attributes = ['_fieldnames', 'trialNums', 'trialNum', 'bct_trialNum']
     stim_attributes_names = [k for k in trials_data[0].__dict__.keys() if k not in exclude_attributes]
     for at in stim_attributes_names:
         nwbfile.add_trial_column(name=at, description='no description')
+    
+    # Add behavioral events as trials columns
+    if events_data is not None:
+        behavioral_variables_names = [k for k in events_data[0].__dict__.keys() if k not in exclude_attributes]
+        for vn in behavioral_variables_names:
+            if vn in ["rLickOnset", "rLickOffset", "lLickOnset", "lLickOffset"]:
+                nwbfile.add_trial_column(name=vn, description='no description', index=True)
+            else:
+                nwbfile.add_trial_column(name=vn, description='no description')
 
-    for i, tr in enumerate(trials_data):
+    for i, (tr, ev) in enumerate(zip(trials_data, events_data)):
         extra_params = dict()
         for a in stim_attributes_names:
             val = getattr(tr, a)
             if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
-                extra_params[a] = str(a)
+                extra_params[a] = str(val)
             elif isinstance(val, str):
                 extra_params[a] = val
             elif math.isnan(val):
                 extra_params[a] = np.nan
             else:
                 extra_params[a] = float(val)
+
+        if events_data is not None:
+            for vn in behavioral_variables_names:
+                # Get corrected absolute timestamps
+                timestamps_relative = getattr(ev, vn)
+                if vn in ["rLickOnset", "rLickOffset", "lLickOnset", "lLickOffset"]:
+                    if isinstance(timestamps_relative, (list, np.ndarray)):
+                        timestamps_absolute = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
+                    elif np.isnan(timestamps_relative):
+                        timestamps_absolute = np.array([])
+                    else:
+                        timestamps_absolute = np.array([timestamps_relative]) + trials_times[i][0] - trials_recordings_time_offsets[i]
+                    extra_params[vn] = timestamps_absolute
+                else:
+                    extra_params[vn] = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
 
         tr_dict = dict(
             start_time=trials_times[i][0], 
@@ -130,7 +154,7 @@ def convert_behavior_continuous_variables(
     units_map,
     time_column="time"
 ):
-    # Create processing module and timeseries data interface
+    # Create processing module
     if "behavior" not in nwbfile.processing:
         nwbfile.create_processing_module(
             name="behavior",

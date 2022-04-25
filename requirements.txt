@@ -64,7 +64,7 @@ ptyprocess==0.7.0
 pure-eval==0.2.2
 pycparser==2.21
 Pygments==2.11.2
-pynwb==2.0.0
+pynwb==2.0.1
 pyparsing==3.0.7
 pyrsistent==0.18.1
 python-dateutil==2.8.2

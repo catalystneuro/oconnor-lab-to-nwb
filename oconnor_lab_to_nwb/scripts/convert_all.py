@@ -29,7 +29,7 @@ from oconnor_lab_to_nwb.scripts.utils import (
 
 eng = matlab.engine.start_matlab()
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
-dataset_name = "seqlick"  # tg, crossmodal, seqlick
+dataset_name = "crossmodal"  # tg, crossmodal, seqlick
 
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
@@ -187,9 +187,17 @@ for fi, file_name in enumerate(all_files):
         dataset_name=dataset_name
     )
     trials_data = data["tableData"][np.where(data["tableType"] == "eventValues")[0][0]]
+    
+    events_data = None
+    behavior_events_ind = np.where(data["tableName"] == "behavTime")[0]
+    if len(behavior_events_ind) > 0:
+        events_data = data["tableData"][behavior_events_ind[0]]
+    
     convert_trials(
         trials_data=trials_data, 
+        events_data=events_data,
         trials_times=trials_times,
+        trials_recordings_time_offsets=trials_recordings_time_offsets,
         nwbfile=nwbfile
     )
 
