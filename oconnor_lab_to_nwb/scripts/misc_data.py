@@ -41,13 +41,22 @@ crossmodal_units = dict(
 
 seqlick_units = dict(
     cue="ms",
-    posIndex="Null",
+    posIndex="categorical",
     water="ms",
-    opto="Null",
+    opto="categorical",
+    opto1="categorical",
+    opto2="categorical",
     noLickITI="ms",
-    is_tongue_out="Null",
-    prob_tongue_out="%",
-    tongue_bottom_lm="pixels"
+    is_tongue_out="categorical",
+    prob_tongue_out="probability",
+    tongue_bottom_lm_tipX="pixels",
+    tongue_bottom_lm_baseX="pixels",
+    tongue_bottom_lm_tipY="pixels",
+    tongue_bottom_lm_baseY="pixels",
+    lickportV="volt",
+    lickportH="volt",
+    tubeV="volt",
+    tubeH="volt"
 )
 
 seqlick_dirs = [

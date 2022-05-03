@@ -1,4 +1,5 @@
 import pynwb
+from hdmf.backends.hdf5.h5_utils import H5DataIO
 import math
 import numpy as np
 from pathlib import Path
@@ -11,7 +12,7 @@ def get_all_mat_files(path_base, exclude_dirs=["Supporting files"]):
         if p.is_dir() and p.name not in exclude_dirs:
             all_files.extend(get_all_mat_files(path_base=p))
         # If it is .mat file
-        if p.is_file() and p.suffix == ".mat" and "seArray.mat" not in p.name:
+        if p.is_file() and p.suffix == ".mat" and "seArray.mat" not in p.name and "data_struct.mat" not in p.name:
             all_files.append(str(p.resolve()))
     return all_files
 
@@ -74,6 +75,8 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
 
 
 def convert_trials(trials_data, events_data, trials_times, trials_recordings_time_offsets, nwbfile):
+    vector_variables = ["rLickOnset", "rLickOffset", "lLickOnset", "lLickOffset", "posIndex", "lickOn", "lickOff"]
+
     # Add stimulus attributes as trials columns
     exclude_attributes = ['_fieldnames', 'trialNums', 'trialNum', 'bct_trialNum']
     stim_attributes_names = [k for k in trials_data[0].__dict__.keys() if k not in exclude_attributes]
@@ -84,10 +87,10 @@ def convert_trials(trials_data, events_data, trials_times, trials_recordings_tim
     if events_data is not None:
         behavioral_variables_names = [k for k in events_data[0].__dict__.keys() if k not in exclude_attributes]
         for vn in behavioral_variables_names:
-            if vn in ["rLickOnset", "rLickOffset", "lLickOnset", "lLickOffset"]:
-                nwbfile.add_trial_column(name=vn, description='no description', index=True)
+            if vn in vector_variables:
+                nwbfile.add_trial_column(name=f"{vn}_times", description='no description', index=True)
             else:
-                nwbfile.add_trial_column(name=vn, description='no description')
+                nwbfile.add_trial_column(name=f"{vn}_times", description='no description')
 
     for i, (tr, ev) in enumerate(zip(trials_data, events_data)):
         extra_params = dict()
@@ -106,16 +109,16 @@ def convert_trials(trials_data, events_data, trials_times, trials_recordings_tim
             for vn in behavioral_variables_names:
                 # Get corrected absolute timestamps
                 timestamps_relative = getattr(ev, vn)
-                if vn in ["rLickOnset", "rLickOffset", "lLickOnset", "lLickOffset"]:
+                if vn in vector_variables:
                     if isinstance(timestamps_relative, (list, np.ndarray)):
                         timestamps_absolute = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
                     elif np.isnan(timestamps_relative):
                         timestamps_absolute = np.array([])
                     else:
                         timestamps_absolute = np.array([timestamps_relative]) + trials_times[i][0] - trials_recordings_time_offsets[i]
-                    extra_params[vn] = timestamps_absolute
+                    extra_params[f"{vn}_times"] = timestamps_absolute
                 else:
-                    extra_params[vn] = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
+                    extra_params[f"{vn}_times"] = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
 
         tr_dict = dict(
             start_time=trials_times[i][0], 
@@ -164,21 +167,70 @@ def convert_behavior_continuous_variables(
     # Store timeseries data in BehavioralTimeSeries data interface
     ts_names = [k for k in ts_data[0].__dict__.keys() if k not in ["_fieldnames", time_column]]
     for tsn in ts_names:
-        ts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
-        nwbfile.processing["behavior"].add(ts)
+        if tsn == "tongue_bottom_lm":
+            ts1 = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}_tipX")
+            ts2 = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}_baseX")
+            ts3 = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}_tipY")
+            ts4 = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}_baseY")
+            nwbfile.processing["behavior"].add(ts1)
+            nwbfile.processing["behavior"].add(ts2)
+            nwbfile.processing["behavior"].add(ts3)
+            nwbfile.processing["behavior"].add(ts4)
+        else:
+            ts = pynwb.behavior.BehavioralTimeSeries(name=f"BehavioralTimeSeries_{tsn}")
+            nwbfile.processing["behavior"].add(ts)
 
         physical_unit=units_map.get(tsn, "unknown")
         for ti, tr in enumerate(ts_data):
             rate = 1. / np.diff(getattr(tr, time_column)).mean()
-            ts.create_timeseries(
-                name=f"{tsn}_{ti}", 
-                data=getattr(tr, tsn), 
-                unit=physical_unit,
-                starting_time=trials_times[ti][0], 
-                rate=rate, 
-                description="no description", 
-                continuity="continuous"
-            )
+            if tsn == "tongue_bottom_lm":
+                ts1.create_timeseries(
+                    name=f"{tsn}_tipX_{ti}", 
+                    data=H5DataIO(data=getattr(tr, tsn)[:, 0], compression='gzip'), 
+                    unit="pixels",
+                    starting_time=trials_times[ti][0], 
+                    rate=rate, 
+                    description="no description", 
+                    continuity="continuous"
+                )
+                ts2.create_timeseries(
+                    name=f"{tsn}_baseX_{ti}", 
+                    data=H5DataIO(data=getattr(tr, tsn)[:, 1], compression='gzip'), 
+                    unit="pixels",
+                    starting_time=trials_times[ti][0], 
+                    rate=rate, 
+                    description="no description", 
+                    continuity="continuous"
+                )
+                ts3.create_timeseries(
+                    name=f"{tsn}_tipY_{ti}", 
+                    data=H5DataIO(data=getattr(tr, tsn)[:, 2], compression='gzip'), 
+                    unit="pixels",
+                    starting_time=trials_times[ti][0], 
+                    rate=rate, 
+                    description="no description", 
+                    continuity="continuous"
+                )
+                ts4.create_timeseries(
+                    name=f"{tsn}_baseY_{ti}", 
+                    data=H5DataIO(data=getattr(tr, tsn)[:, 3], compression='gzip'), 
+                    unit="pixels",
+                    starting_time=trials_times[ti][0], 
+                    rate=rate, 
+                    description="no description", 
+                    continuity="continuous"
+                )    
+            else:            
+                wrapped_data = H5DataIO(data=getattr(tr, tsn), compression='gzip')
+                ts.create_timeseries(
+                    name=f"{tsn}_{ti}", 
+                    data=wrapped_data, 
+                    unit=physical_unit,
+                    starting_time=trials_times[ti][0], 
+                    rate=rate, 
+                    description="no description", 
+                    continuity="continuous"
+                )
 
 
 def convert_ecephys(
@@ -243,6 +295,11 @@ def convert_ecephys(
             all_data_trial.append(getattr(tr, f"channel_{ci}"))
             elecs_region.append(np.where(ci == nwbfile.electrodes.id[:])[0][0])
 
+        wrapped_data = H5DataIO(
+            data=np.array(all_data_trial).T, 
+            compression='gzip'
+        )
+
         elecs_table_region = nwbfile.create_electrode_table_region(
             region=elecs_region,
             description='all electrodes'
@@ -250,7 +307,7 @@ def convert_ecephys(
         
         lfp.create_electrical_series(
             name=f"ElectricalSeries_{ti}", 
-            data=np.array(all_data_trial).T, 
+            data=wrapped_data, 
             electrodes=elecs_table_region, 
             conversion=1e-6,  # in CrossModal LFP is in microvolt 
             starting_time=trials_times[ti][0],
