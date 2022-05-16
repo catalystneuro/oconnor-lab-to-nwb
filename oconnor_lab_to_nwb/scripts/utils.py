@@ -63,12 +63,13 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
     trials_times = list()
     for i, td in enumerate(timeseries_data):
         duration = td.time[-1] - td.time[0] + trial_duration_increase
-        trials_times.append((float(last_time), float(last_time + duration)))
         if dataset_name == "tg":
+            trials_times.append((float(last_time), float(last_time + duration + 2)))
             last_time = last_time + duration + 2.
         elif len(reference_times) == i + 1:
             pass
         else:
+            trials_times.append((float(last_time), float(last_time + duration)))
             last_time = reference_times[i + 1]
 
     return trials_times
@@ -92,20 +93,19 @@ def convert_trials(trials_data, events_data, trials_times, trials_recordings_tim
             else:
                 nwbfile.add_trial_column(name=f"{vn}_times", description='no description')
 
-    for i, (tr, ev) in enumerate(zip(trials_data, events_data)):
-        extra_params = dict()
-        for a in stim_attributes_names:
-            val = getattr(tr, a)
-            if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
-                extra_params[a] = str(val)
-            elif isinstance(val, str):
-                extra_params[a] = val
-            elif math.isnan(val):
-                extra_params[a] = np.nan
-            else:
-                extra_params[a] = float(val)
+        for i, (tr, ev) in enumerate(zip(trials_data, events_data)):
+            extra_params = dict()
+            for a in stim_attributes_names:
+                val = getattr(tr, a)
+                if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
+                    extra_params[a] = str(val)
+                elif isinstance(val, str):
+                    extra_params[a] = val
+                elif math.isnan(val):
+                    extra_params[a] = np.nan
+                else:
+                    extra_params[a] = float(val)
 
-        if events_data is not None:
             for vn in behavioral_variables_names:
                 # Get corrected absolute timestamps
                 timestamps_relative = getattr(ev, vn)
@@ -120,13 +120,34 @@ def convert_trials(trials_data, events_data, trials_times, trials_recordings_tim
                 else:
                     extra_params[f"{vn}_times"] = timestamps_relative + trials_times[i][0] - trials_recordings_time_offsets[i]
 
-        tr_dict = dict(
-            start_time=trials_times[i][0], 
-            stop_time=trials_times[i][1],
-            **extra_params
-        )
-        nwbfile.add_trial(**tr_dict)
-
+            tr_dict = dict(
+                start_time=trials_times[i][0], 
+                stop_time=trials_times[i][1],
+                **extra_params
+            )
+            nwbfile.add_trial(**tr_dict)
+    
+    # If no behavioral events
+    else:
+        for i, tr in enumerate(trials_data):
+            extra_params = dict()
+            for a in stim_attributes_names:
+                val = getattr(tr, a)
+                if a == "posIndex" or isinstance(val, (list, tuple, np.ndarray)):  # if value is an array, it must be converted to string to fit cell in table
+                    extra_params[a] = str(val)
+                elif isinstance(val, str):
+                    extra_params[a] = val
+                elif math.isnan(val):
+                    extra_params[a] = np.nan
+                else:
+                    extra_params[a] = float(val)
+            
+            tr_dict = dict(
+                start_time=trials_times[i][0], 
+                stop_time=trials_times[i][1],
+                **extra_params
+            )
+            nwbfile.add_trial(**tr_dict)
 
 
 def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offsets, dataset_name, nwbfile):
@@ -143,11 +164,12 @@ def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offse
             if isinstance(spkt, np.ndarray) and len(spkt) > 0:
                 spkt += trials_times[i][0] - trials_recordings_time_offsets[i]
                 all_spkt.extend(list(spkt))
-        nwbfile.add_unit(
-            id=ui, 
-            spike_times=all_spkt,
-            obs_intervals=obs_intervals,
-        )
+        if len(all_spkt) > 0:
+            nwbfile.add_unit(
+                id=ui, 
+                spike_times=all_spkt,
+                obs_intervals=obs_intervals,
+            )
 
 
 def convert_behavior_continuous_variables(

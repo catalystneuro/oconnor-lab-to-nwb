@@ -1,5 +1,5 @@
 import pynwb
-from nwbinspector import inspect_nwb
+from nwbinspector import inspect_nwb, Importance
 from nwbinspector.inspector_tools import format_messages
 
 import matlab.engine
@@ -29,13 +29,13 @@ from oconnor_lab_to_nwb.scripts.utils import (
 
 eng = matlab.engine.start_matlab()
 msessionexplorer_path = '/home/luiz/storage/taufferconsulting/client_ben/project_oconnor/MSessionExplorer'
-dataset_name = "seqlick"  # tg, crossmodal, seqlick
+dataset_name = "tg"  # tg, crossmodal, seqlick
 
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
     units_map = tg_units
     # dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitData/'
-    dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitDataEMG/'
+    dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitDataCW/'
     output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/"    
     experimenters = ["Kyle S Severson", "Duo Xu"]
     related_publications = ["DOI: 10.1016/j.neuron.2017.03.045"]
@@ -247,7 +247,7 @@ for fi, file_name in enumerate(all_files):
     # Inspect converted data
     inspection_generator = inspect_nwb(
         nwbfile_path=output_file, 
-        importance_threshold="BEST_PRACTICE_VIOLATION"
+        importance_threshold=Importance.BEST_PRACTICE_VIOLATION
     )
     inspection_messages = list(inspection_generator)
     if len(inspection_messages) == 0:
