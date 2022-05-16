@@ -2,7 +2,7 @@
 
 
 ## Installation
-Create a separate environment for your project:
+Create a separate environment for your project (MATLAB Engine for Python will require Python 3.7 or 3.8):
 ```bash
 conda create -n env_oconnor python=3.8 pip
 conda activate env_oconnor
