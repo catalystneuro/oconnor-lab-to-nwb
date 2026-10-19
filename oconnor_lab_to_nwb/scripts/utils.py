@@ -167,9 +167,10 @@ def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offse
                 spkt += trials_times[i][0] - trials_recordings_time_offsets[i]
                 all_spkt.extend(list(spkt))
         if len(all_spkt) > 0:
+            # Sorted, with exact repeats dropped: in KS0277A every trial from index 85 on holds each spike twice.
             nwbfile.add_unit(
                 id=ui, 
-                spike_times=sorted(all_spkt),
+                spike_times=np.unique(all_spkt),
                 obs_intervals=obs_intervals,
             )
 
