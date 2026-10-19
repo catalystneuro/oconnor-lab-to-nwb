@@ -64,7 +64,9 @@ def make_trials_times(data, trials_recordings_time_offsets, dataset_name):
     for i, td in enumerate(timeseries_data):
         duration = td.time[-1] - td.time[0] + trial_duration_increase
         if dataset_name == "tg":
-            trials_times.append((float(last_time), float(last_time + duration + 2)))
+            # Trials end one frame after their last frame; the 2 s after that is only a gap between trials
+            frame_period = np.diff(td.time).mean()
+            trials_times.append((float(last_time), float(last_time + duration + frame_period)))
             last_time = last_time + duration + 2.
         elif len(reference_times) == i + 1:
             pass
@@ -167,7 +169,7 @@ def convert_spike_times(spiking_data, trials_times, trials_recordings_time_offse
         if len(all_spkt) > 0:
             nwbfile.add_unit(
                 id=ui, 
-                spike_times=all_spkt,
+                spike_times=sorted(all_spkt),
                 obs_intervals=obs_intervals,
             )
 
@@ -177,6 +179,7 @@ def convert_behavior_continuous_variables(
     trials_times, 
     nwbfile, 
     units_map,
+    descriptions_map=dict(),
     time_column="time"
 ):
     # Create processing module
@@ -203,6 +206,7 @@ def convert_behavior_continuous_variables(
             nwbfile.processing["behavior"].add(ts)
 
         physical_unit=units_map.get(tsn, "unknown")
+        description=descriptions_map.get(tsn, "no description")
         for ti, tr in enumerate(ts_data):
             rate = 1. / np.diff(getattr(tr, time_column)).mean()
             if tsn == "tongue_bottom_lm":
@@ -250,7 +254,7 @@ def convert_behavior_continuous_variables(
                     unit=physical_unit,
                     starting_time=trials_times[ti][0], 
                     rate=rate, 
-                    description="no description", 
+                    description=description, 
                     continuity="continuous"
                 )
 

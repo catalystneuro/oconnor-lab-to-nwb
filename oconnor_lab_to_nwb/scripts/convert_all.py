@@ -13,6 +13,7 @@ import uuid
 from oconnor_lab_to_nwb.scripts.load_mat_struct import loadmat
 from oconnor_lab_to_nwb.scripts.misc_data import (
     tg_units, 
+    tg_descriptions,
     crossmodal_units,
     seqlick_units
 )
@@ -34,6 +35,7 @@ dataset_name = "tg"  # tg, crossmodal, seqlick
 # Each dataset has its metadata extracted in a different way
 if dataset_name == "tg":
     units_map = tg_units
+    descriptions_map = tg_descriptions
     # dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitData/'
     dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/SeversonXu2017/UnitDataCW/'
     output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/TG/converted/"    
@@ -43,12 +45,14 @@ if dataset_name == "tg":
 
 elif dataset_name == "crossmodal":
     units_map = crossmodal_units
+    descriptions_map = dict()
     dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/CrossModal/'
     output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/CrossModal/converted/"
     experimenters = ["Yi-Ting Chang"]
 
 elif dataset_name == "seqlick":
     units_map = seqlick_units
+    descriptions_map = dict()
     dir_path = '/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/SeqLick/'
     output_dir = "/media/luiz/storage/taufferconsulting/client_ben/project_oconnor/SeqLick/converted/"
     experimenters = ["Duo Xu"]
@@ -97,9 +101,10 @@ for fi, file_name in enumerate(all_files):
             continue
         
         session_start_time = datetime.strptime(recording_df["recording_date"].values[0] + " 12:00:00", "%m/%d/%y %H:%M:%S").replace(tzinfo=tz.gettz("US/Eastern"))
+        # The file name keeps the unit letter, which sessionName lacks for some recordings (KS0125_, KS0128_)
         init_metadata = dict(
-            session_description=data["userData"]["sessionName"],
-            identifier=data["userData"]["sessionName"],
+            session_description=f"KS0{recording_id}",
+            identifier=f"KS0{recording_id}",
             session_start_time=session_start_time,
             lab="O'Connor lab",
             institution="Johns Hopkins University",
@@ -220,6 +225,7 @@ for fi, file_name in enumerate(all_files):
                     trials_times=trials_times,
                     nwbfile=nwbfile, 
                     units_map=units_map,
+                    descriptions_map=descriptions_map,
                     time_column="time"
                 )
     
